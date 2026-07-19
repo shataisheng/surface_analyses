@@ -1,4 +1,46 @@
-[build-system]
-requires = [
-    "setuptools", "wheel"
+[project]
+name = "surface_analyses"
+version = "0.2"
+description = "PEP-Patch: Electrostatics and hydrophobicity analyses of protein surfaces"
+authors = [{ name = "Franz Waibl", email = "franz.waibl@uibk.ac.at" }]
+requires-python = ">=3.10"
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-image",
+    "plyfile",
+    "matplotlib>=3.7",
+    "pdb2pqr>=3",
+    "biopython",
+    "rdkit",
+    "mdtraj",
+    "numba",
+    "gisttools",
 ]
+
+[project.optional-dependencies]
+# msms 的 Python 包装包（来自 git 源，构建风险高，默认不安装）。
+# 运行时实际使用本地 Tools/msms/msms(.exe)，故不阻塞 `uv sync`；
+# 如确需 PyPI 版 msms_wrapper，可执行 `uv sync --extra tools`。
+tools = ["msms-wrapper"]
+
+[project.scripts]
+pep_patch_hydrophobic = "surface_analyses.commandline_hydrophobic:main"
+pep_patch_electrostatic = "surface_analyses.commandline_electrostatic:main"
+pep_patch_gui = "surface_analyses.pep_patch_gui:main"
+pep_patch_analyze = "src.unified_analyzer:main"
+pep_patch_summary = "src.batch_summary:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv.sources]
+gisttools = { git = "https://github.com/liedllab/gisttools.git" }
+msms-wrapper = { git = "https://github.com/rinikerlab/msms_wrapper.git" }
+
+[tool.setuptools.packages.find]
+include = ["surface_analyses*"]
+

@@ -1,7 +1,18 @@
 from typing import List, Optional
-import anarci
 import bisect
+import subprocess
+import tempfile
+import os
+import re
 from collections import namedtuple
+
+# Try importing the Python anarci package. If unavailable, fall back to anarci.exe.
+try:
+    import anarci as _anarci_pkg
+    _HAS_ANARCI_PKG = True
+except ImportError:
+    _anarci_pkg = None
+    _HAS_ANARCI_PKG = False
 
 CDRS = {
     'chothia': {
@@ -76,17 +87,49 @@ class Annotation:
         self.run_name = run_name
         self.scheme = scheme
         
-        numbering, alignment_details, hit_tables = anarci.anarci([(run_name, seq)], scheme=scheme)
+        if _HAS_ANARCI_PKG:
+            self._init_from_python_pkg(seq, run_name, scheme)
+        else:
+            self._init_from_subprocess(seq, run_name, scheme)
+
+    def _init_from_python_pkg(self, seq, run_name, scheme):
+        """Use the Python anarci package (WSL/Linux)."""
+        numbering, alignment_details, hit_tables = _anarci_pkg.anarci([(run_name, seq)], scheme=scheme)
         self._chains = {}
         for chain, details in zip(numbering[0], alignment_details[0]):
             assert details['chain_type'] not in self._chains
             residues, start, stop = chain
             res_keys = [r[0] for r in residues if r[1] != '-']
             assert is_sorted(res_keys)
-            # stop indicates the *last* index, so stop-start = len - 1
-            # This is crucial since I use the position in res_keys to identify my residues!
             assert stop - start == len(res_keys) - 1, f"{start=}, {len(res_keys)=}, {stop=}"
             self._chains[details['chain_type']] = Chain(res_keys, start)
+
+    def _init_from_subprocess(self, seq, run_name, scheme):
+        """Use anarci.exe via subprocess (Windows fallback)."""
+        from ..platform_config import get_config
+        cfg = get_config()
+        anarci_exe = cfg.anarci
+        
+        if anarci_exe is None or not os.path.exists(anarci_exe):
+            raise RuntimeError(
+                "ANARCI is not available. Install the Python 'anarci' package, "
+                "or place anarci.exe in Tools/ANARCI/.")
+        
+        # Write sequence to temp FASTA file
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fasta_path = os.path.join(tmpdir, f"{run_name}.fasta")
+            with open(fasta_path, 'w') as f:
+                f.write(f">{run_name}\n{seq}\n")
+            
+            result = subprocess.run(
+                [anarci_exe, '--sequence', fasta_path, '--scheme', scheme],
+                capture_output=True, text=True, timeout=120,
+            )
+            
+            if result.returncode != 0:
+                raise RuntimeError(f"ANARCI failed: {result.stderr}")
+        
+        self._chains = _parse_anarci_text(result.stdout, scheme)
 
     @classmethod
     def from_traj(cls, traj, **kwargs):
@@ -148,3 +191,75 @@ def is_sorted(lst):
         if lst[i] > element:
             return False
     return True
+
+
+def _parse_anarci_text(output: str, scheme: str = 'chothia'):
+    """Parse ANARCI text output into Chain objects.
+    
+    The output format is:
+        H 1       E
+        H 2       V
+        H 52    A P    (insertion code A in Chothia numbering)
+        ...
+        //
+    
+    Returns dict of chain_type -> Chain objects compatible with Annotation._chains.
+    """
+    import re
+    
+    chains_data = {}  # chain_type -> list of (chothia_number, insertion_code, seq_position)
+    current_chain = None
+    seq_position = 0
+    
+    for line in output.split('\n'):
+        line = line.rstrip()
+        if not line or line.startswith('#'):
+            continue
+        if line.strip() == '//':
+            current_chain = None
+            continue
+        
+        # Parse: H 26      G   or   H 52    A P
+        match = re.match(r'^([HKL])\s+(\d+)\s*([A-Z]?)\s+([A-Z])', line)
+        if not match:
+            continue
+        
+        chain_type = match.group(1)
+        chothia_num = int(match.group(2))
+        insertion = match.group(3).strip() if match.group(3) else ''
+        aa = match.group(4)
+        
+        if aa == '-':
+            continue  # skip gaps
+        
+        if chain_type != current_chain:
+            current_chain = chain_type
+            seq_position = 0
+            if chain_type not in chains_data:
+                chains_data[chain_type] = []
+        
+        chains_data[chain_type].append((chothia_num, insertion, seq_position))
+        seq_position += 1
+    
+    # Convert to Chain objects compatible with existing API
+    # The Chain class expects: residues = sorted list of ResidueCode, offset = min chothia number
+    
+    chains = {}
+    for chain_type, data in chains_data.items():
+        # Map chothia_number -> seq_position; also handle insertion codes
+        res_keys = []
+        for chothia_num, insertion, seq_pos in data:
+            ic = insertion if insertion else ' '
+            res_keys.append(ResidueCode(chothia_num, ic))
+        
+        res_keys.sort()
+        offset = min(r.index for r in res_keys)
+        chains[chain_type] = Chain(res_keys, offset)
+    
+    # Map chain types: ANARCI uses H/K/L, internal code also supports 'heavy'/'light'
+    if 'H' not in chains and 'heavy' in chains:
+        chains['H'] = chains['heavy']
+    if 'K' in chains and 'L' not in chains:
+        chains['L'] = chains['K']
+    
+    return chains

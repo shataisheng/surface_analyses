@@ -5,3 +5,6 @@ __pycache__
 build
 .eggs/*
 *.egg-info
+results/
+models/
+.venv/

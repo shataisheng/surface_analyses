@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="Surface analyses",
-    version="0.1",
+    version="0.2",
     description="Hydrophobicity analyses based on SASA",
     author="Franz Waibl",
     author_email="franz.waibl@uibk.ac.at",
@@ -15,7 +15,6 @@ setup(
         'pandas',
         'scikit-image',
         'gisttools @ git+https://github.com/liedllab/gisttools.git',
-        'msms_wrapper @ git+https://github.com/rinikerlab/msms_wrapper',
         'plyfile',
         'matplotlib>=3.7',
         'pdb2pqr>=3',

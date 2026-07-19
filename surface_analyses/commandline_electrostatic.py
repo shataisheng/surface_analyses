@@ -23,6 +23,7 @@ from .surface import Surface
 from .surface import color_surface, color_surface_by_group
 from .surface import compute_sas, compute_ses, compute_gauss_surf
 from .structure import load_trajectory_using_commandline_args, add_trajectory_options_to_parser
+from .platform_config import get_config
 
 import warnings
 
@@ -38,6 +39,8 @@ def main(args=None):
     print(f'pep_patch_electrostatic starting at {datetime.datetime.now()}')
     print('Command line arguments:')
     print(' '.join(args or sys.argv))
+    # Auto-setup platform-specific PATH before any subprocess calls
+    get_config().setup_path()
     args = parse_args(args)
     traj = load_trajectory_using_commandline_args(args)
     # trajectory-related arguments are not passed to run_electrostatics
@@ -187,7 +190,11 @@ def run_electrostatics(
         res.resSeq = i
 
     if dx is None and apbs_dir is None:
-        raise ValueError("Either DX or APBS_DIR must be specified.")
+        # Auto-detect APBS working directory based on platform
+        cfg = get_config()
+        cfg.setup_path()
+        apbs_dir = cfg.default_apbs_work_dir
+        print(f"Auto-detected APBS working directory: {apbs_dir}")
 
     if dx is not None and apbs_dir is not None:
         warnings.warn("Warning: both DX and APBS_DIR are specified. Will not run APBS "
@@ -223,10 +230,11 @@ def run_electrostatics(
                 str(traj.top.residue(i))
                 for i in Annotation.from_traj(traj[0], scheme='chothia').cdr_indices()
             ]
-        except ImportError as e:
+        except (ImportError, RuntimeError) as e:
             print(f"CDR annotation failed with the following error:\n{e}\n"
                    "If the error pertains to the annotation tool ANARCI or ANARCI is missing, "
-                   "a fresh installation of ANARCI ( https://github.com/oxpig/ANARCI ) or its dependencies might help.\n\n"
+                   "a fresh installation of ANARCI ( https://github.com/oxpig/ANARCI ) or its dependencies might help.\n"
+                   "On Windows, place anarci.exe in Tools/ANARCI/ for automatic detection.\n\n"
                    "To use pep_patch_electrostatic without CDR annotation, rerun the script without the '--check_cdrs' flag." )
             raise RuntimeError("CDR Annotation failed")
     else:

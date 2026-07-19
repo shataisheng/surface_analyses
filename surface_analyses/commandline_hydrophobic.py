@@ -18,11 +18,14 @@ from .pdb import PdbAtom
 from .sap import blur as sap_blur
 from .patches import find_patches
 from .surface import color_surface_by_patch, color_surface, surfaces_to_dict
+from .platform_config import get_config
 
 def main(args=None):
     print(f"pep_patch_hydrophobic starting at {datetime.datetime.now()}")
     print('Command line arguments:')
     print(' '.join(args or sys.argv))
+    # Auto-setup platform-specific PATH before any subprocess calls
+    get_config().setup_path()
     args = parse_args(args)
     traj = load_trajectory_using_commandline_args(args)
     # trajectory-related arguments are not passed to run_hydrophobic

@@ -1,0 +1,11 @@
+# Raw input structures (large, regenerable from ImmuneBuilder)
+*.pdb
+*.xlsx
+
+# Generated analysis outputs
+results/
+*.npz
+enhanced_pair_analysis.csv
+
+# One-off test artifacts
+Herceptin_*
