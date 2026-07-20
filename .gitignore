@@ -1,5 +1,14 @@
-test/trastuzumab/get.sh
-test/trastuzumab/make-pdb.sh
+# 外部工具与大型二进制不入库，改用 scripts/setup_tools.py 获取或本地放置
+Tools/
+# 测试夹具数据（输入/结果）不入库，仅保留测试脚本
+test/**/*.npz
+test/**/*.dx
+test/**/*.pdb
+test/**/*.parm7
+test/**/*.rst7
+test/**/*.save
+test/**/*.csv
+test/trastuzumab/
 __pycache__
 *.pyc
 build

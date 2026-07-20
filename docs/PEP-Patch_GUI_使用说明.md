@@ -104,6 +104,20 @@ PEP_Patch_GUI._open_path(path)
 - 运行时依赖见 `pyproject.toml` / `requirements.txt`（tkinter 通常随 Python 自带；若缺失需 `apt install python3-tk` 等）。
 - 外部二进制：`MSMS`、`APBS`、`pdb2pqr`、`ANARCI`，位于 `Tools/`（Windows 版）。Linux 请另行安装对应版本。
 
+### 4.1 获取外部组件（Tools / models / test 数据）
+
+> 为减小仓库体积，以下大文件**不再纳入 git**（见根目录 `.gitignore`）：
+> `Tools/`（外部二进制）、`models/`（预训练模型）、`test/` 中的夹具数据。
+> clone 后若本地缺失这些文件，请按下方方式获取；**本地已存在时无需任何操作**，可直接运行。
+
+- **Windows 二进制（Tools/）**：运行检查脚本
+  ```bash
+  python scripts/setup_tools.py            # 检查并打印获取指引
+  python scripts/setup_tools.py --install # 额外尝试 pip 安装 pdb2pqr / anarci
+  ```
+  脚本会报告 `MSMS` / `APBS` / `pdb2pqr` / `ANARCI` 的就绪状态，并给出各自的官方下载页与期望放置目录（如 `Tools/msms/`、`Tools/APBS-3.4.1.Windows/bin/` 等）。
+- **模型与测试数据**：`models/immunebuilder/`、`test/trastuzumab/` 等数据请本地放置，或运行测试时由程序自动生成。
+
 ---
 
 ## 5. 已知限制
