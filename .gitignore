@@ -1,5 +1,8 @@
 # 外部工具与大型二进制不入库，改用 scripts/setup_tools.py 获取或本地放置
-Tools/
+# 通过 .gitkeep 保留空目录结构占位，实际二进制仍被忽略
+Tools/**
+!Tools/
+!Tools/**/
 # 测试夹具数据（输入/结果）不入库，仅保留测试脚本
 test/**/*.npz
 test/**/*.dx
@@ -8,12 +11,21 @@ test/**/*.parm7
 test/**/*.rst7
 test/**/*.save
 test/**/*.csv
-test/trastuzumab/
+test/trastuzumab/**
+!test/trastuzumab/
+!test/trastuzumab/**/
+
 __pycache__
 *.pyc
 build
 .eggs/*
 *.egg-info
 results/
-models/
+# 预训练模型不入库，保留目录占位
+models/**
+!models/
+!models/**/
 .venv/
+
+# 允许占位文件（.gitkeep）被 git 跟踪，以保持目录结构
+!**/.gitkeep

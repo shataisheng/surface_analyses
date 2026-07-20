@@ -106,17 +106,38 @@ PEP_Patch_GUI._open_path(path)
 
 ### 4.1 获取外部组件（Tools / models / test 数据）
 
-> 为减小仓库体积，以下大文件**不再纳入 git**（见根目录 `.gitignore`）：
-> `Tools/`（外部二进制）、`models/`（预训练模型）、`test/` 中的夹具数据。
-> clone 后若本地缺失这些文件，请按下方方式获取；**本地已存在时无需任何操作**，可直接运行。
+> 为减小仓库体积，以下大文件**不再纳入 git**（见根目录 `.gitignore`），仓库中仅保留**空目录占位**（`.gitkeep`）：
+> `Tools/`（外部二进制）、`models/`（预训练模型）、`test/trastuzumab/`（夹具数据）。
+> clone 后若本地缺失这些文件，请按下方方式获取并放到**指定路径**；**本地已存在时无需任何操作**，可直接运行。
 
-- **Windows 二进制（Tools/）**：运行检查脚本
-  ```bash
-  python scripts/setup_tools.py            # 检查并打印获取指引
-  python scripts/setup_tools.py --install # 额外尝试 pip 安装 pdb2pqr / anarci
-  ```
-  脚本会报告 `MSMS` / `APBS` / `pdb2pqr` / `ANARCI` 的就绪状态，并给出各自的官方下载页与期望放置目录（如 `Tools/msms/`、`Tools/APBS-3.4.1.Windows/bin/` 等）。
-- **模型与测试数据**：`models/immunebuilder/`、`test/trastuzumab/` 等数据请本地放置，或运行测试时由程序自动生成。
+#### 4.1.1 外部工具（Tools/）
+
+运行检查脚本可打印就绪状态与获取指引：
+```bash
+python scripts/setup_tools.py            # 检查并打印获取指引
+python scripts/setup_tools.py --install # 额外尝试 pip 安装 pdb2pqr / anarci
+```
+
+| 工具 | 期望放置路径（相对仓库根） | 获取方式 |
+|---|---|---|
+| MSMS | `Tools/msms/msms.exe`（Windows）<br>`Tools/msms/msms`（Linux/macOS） | Windows: 下载 `msms.exe` + `cygwin1.dll` 放入 `Tools/msms/`（来源 MGLTools / Sanner lab）。Linux/macOS: `pip install msms-wrapper` 或系统包。 |
+| APBS | `Tools/APBS-3.4.1.Windows/bin/apbs.exe`（Windows） | Windows: 下载 APBS-3.4.1 Windows 版解压到 `Tools/APBS-3.4.1.Windows/`（`apbs.exe` 在 `bin/` 下），来源 https://github.com/Electrostatics/APBS/releases 。Linux/macOS: `apt install apbs` 或 `conda install -c conda-forge apbs`。 |
+| pdb2pqr | `Tools/pdb2pqr-portable/pdb2pqr.exe`（Windows） | Windows: 用便携版 `pdb2pqr-portable`（含 `pdb2pqr.exe`）放到 `Tools/pdb2pqr-portable/`。Linux/macOS: `pip install "pdb2pqr>=3"`。 |
+| ANARCI | `Tools/ANARCI/anarci.exe`（Windows） | Windows: 下载 `anarci.exe` 放到 `Tools/ANARCI/`（仅抗体 CDR 编号用到，可选）。Linux/macOS: `pip install anarci`。 |
+
+> 解析顺序：`platform_config` 按「环境变量 `PEP_PATCH_*` > 仓库内置 `Tools/` 二进制 > 系统 `PATH`」解析上述工具，因此本地 `Tools/` 副本始终优先。
+
+#### 4.1.2 预训练模型（models/）
+
+| 数据 | 期望放置路径 | 说明 |
+|---|---|---|
+| ImmuneBuilder 模型 | `models/immunebuilder/` | 预训练模型 `.pdb` 文件，请本地放置到 `models/immunebuilder/`（或从内部数据源获取）。 |
+
+#### 4.1.3 测试夹具数据（test/trastuzumab/）
+
+| 数据 | 期望放置路径 | 说明 |
+|---|---|---|
+| trastuzumab 测试数据 | `test/trastuzumab/` | 测试输入/结果（`.npz` / `.dx` / `.pdb` / `.parm7` / `.rst7` / `.save` / `.csv` 等），请本地放置到 `test/trastuzumab/`，或运行测试时由程序自动生成。 |
 
 ---
 
