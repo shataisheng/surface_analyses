@@ -1,9 +1,9 @@
 [project]
 name = "surface_analyses"
-version = "0.2"
+version = "0.3"
 description = "PEP-Patch: Electrostatics and hydrophobicity analyses of protein surfaces"
 authors = [{ name = "Franz Waibl", email = "franz.waibl@uibk.ac.at" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 dependencies = [
     "numpy",
@@ -15,7 +15,7 @@ dependencies = [
     "pdb2pqr>=3",
     "biopython",
     "rdkit",
-    "mdtraj",
+    "mdtraj>=1.11",
     "numba",
     "gisttools",
 ]

@@ -100,15 +100,15 @@ PEP_Patch_GUI._open_path(path)
 
 ## 4. 依赖与外部工具
 
-- Python ≥ 3.10（仓库 `.venv` 为 3.12）。
+- Python ≥ 3.11（仓库 `.venv` 为 3.12）。
 - 运行时依赖见 `pyproject.toml` / `requirements.txt`（tkinter 通常随 Python 自带；若缺失需 `apt install python3-tk` 等）。
 - 外部二进制：`MSMS`、`APBS`、`pdb2pqr`、`ANARCI`，位于 `Tools/`（Windows 版）。Linux 请另行安装对应版本。
 
 ### 4.1 获取外部组件（Tools / models / test 数据）
 
 > 为减小仓库体积，以下大文件**不再纳入 git**（见根目录 `.gitignore`），仓库中仅保留**空目录占位**（`.gitkeep`）：
-> `Tools/`（外部二进制）、`models/`（预训练模型）、`test/trastuzumab/`（夹具数据）。
-> clone 后若本地缺失这些文件，请按下方方式获取并放到**指定路径**；**本地已存在时无需任何操作**，可直接运行。
+> `models/`（预训练模型）、`test/trastuzumab/`（夹具数据）。
+> `Tools/` 中 **`msms`（~2 MB）已随仓库提供**，其余大型工具（APBS、pdb2pqr、ANARCI）仍需手动获取。
 
 #### 4.1.1 外部工具（Tools/）
 
@@ -120,7 +120,7 @@ python scripts/setup_tools.py --install # 额外尝试 pip 安装 pdb2pqr / anar
 
 | 工具 | 期望放置路径（相对仓库根） | 获取方式 |
 |---|---|---|
-| MSMS | `Tools/msms/msms.exe`（Windows）<br>`Tools/msms/msms`（Linux/macOS） | Windows: 下载 `msms.exe` + `cygwin1.dll` 放入 `Tools/msms/`（来源 MGLTools / Sanner lab）。Linux/macOS: `pip install msms-wrapper` 或系统包。 |
+| MSMS | `Tools/msms/msms.exe`（Windows）<br>`Tools/msms/msms`（Linux/macOS） | ✅ **已随仓库提供**（`msms.exe` + `cygwin1.dll`）。Linux/macOS 用户需自行获取对应平台的 `msms` 二进制放入该目录。 |
 | APBS | `Tools/APBS-3.4.1.Windows/bin/apbs.exe`（Windows） | Windows: 下载 APBS-3.4.1 Windows 版解压到 `Tools/APBS-3.4.1.Windows/`（`apbs.exe` 在 `bin/` 下），来源 https://github.com/Electrostatics/APBS/releases 。Linux/macOS: `apt install apbs` 或 `conda install -c conda-forge apbs`。 |
 | pdb2pqr | `Tools/pdb2pqr-portable/pdb2pqr.exe`（Windows） | Windows: 用便携版 `pdb2pqr-portable`（含 `pdb2pqr.exe`）放到 `Tools/pdb2pqr-portable/`。Linux/macOS: `pip install "pdb2pqr>=3"`。 |
 | ANARCI | `Tools/ANARCI/anarci.exe`（Windows） | Windows: 下载 `anarci.exe` 放到 `Tools/ANARCI/`（仅抗体 CDR 编号用到，可选）。Linux/macOS: `pip install anarci`。 |

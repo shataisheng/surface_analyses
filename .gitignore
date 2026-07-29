@@ -1,8 +1,11 @@
 # 外部工具与大型二进制不入库，改用 scripts/setup_tools.py 获取或本地放置
 # 通过 .gitkeep 保留空目录结构占位，实际二进制仍被忽略
+# msms（~2 MB）例外，直接入库
 Tools/**
 !Tools/
 !Tools/**/
+!Tools/msms/
+!Tools/msms/**
 # 测试夹具数据（输入/结果）不入库，仅保留测试脚本
 test/**/*.npz
 test/**/*.dx
