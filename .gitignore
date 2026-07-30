@@ -17,6 +17,10 @@ test/**/*.csv
 test/trastuzumab/**
 !test/trastuzumab/
 !test/trastuzumab/**/
+# 疏水尺度 CSV 体积小且运行时必须，需入库（反忽略）
+!test/trastuzumab/wimley-white-scaled.csv
+!test/trastuzumab/glmnet.csv
+
 
 __pycache__
 *.pyc
