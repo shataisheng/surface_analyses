@@ -18,13 +18,8 @@ dependencies = [
     "mdtraj>=1.11",
     "numba",
     "gisttools",
+    "msms-wrapper",
 ]
-
-[project.optional-dependencies]
-# msms 的 Python 包装包（来自 git 源，构建风险高，默认不安装）。
-# 运行时实际使用本地 Tools/msms/msms(.exe)，故不阻塞 `uv sync`；
-# 如确需 PyPI 版 msms_wrapper，可执行 `uv sync --extra tools`。
-tools = ["msms-wrapper"]
 
 [project.scripts]
 pep_patch_hydrophobic = "surface_analyses.commandline_hydrophobic:main"

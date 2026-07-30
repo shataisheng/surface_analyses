@@ -1204,13 +1204,14 @@ wheels = [
 
 [[package]]
 name = "surface-analyses"
-version = "0.2"
+version = "0.3"
 source = { editable = "." }
 dependencies = [
     { name = "biopython" },
     { name = "gisttools" },
     { name = "matplotlib" },
     { name = "mdtraj" },
+    { name = "msms-wrapper" },
     { name = "numba" },
     { name = "numpy" },
     { name = "pandas" },
@@ -1222,18 +1223,13 @@ dependencies = [
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 
-[package.optional-dependencies]
-tools = [
-    { name = "msms-wrapper" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "biopython" },
     { name = "gisttools", git = "https://github.com/liedllab/gisttools.git" },
     { name = "matplotlib", specifier = ">=3.7" },
     { name = "mdtraj", specifier = ">=1.11" },
-    { name = "msms-wrapper", marker = "extra == 'tools'", git = "https://github.com/rinikerlab/msms_wrapper.git" },
+    { name = "msms-wrapper", git = "https://github.com/rinikerlab/msms_wrapper.git" },
     { name = "numba" },
     { name = "numpy" },
     { name = "pandas" },
@@ -1243,7 +1239,6 @@ requires-dist = [
     { name = "scikit-image" },
     { name = "scipy" },
 ]
-provides-extras = ["tools"]
 
 [[package]]
 name = "tifffile"
