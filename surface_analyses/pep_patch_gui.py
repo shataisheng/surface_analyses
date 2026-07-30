@@ -374,19 +374,6 @@ class PepPatchGUI:
             self.console.tag_config(tag, foreground=color)
         self.console.tag_config("header", font=("Consolas", 10, "bold"))
 
-        # Results
-        rf = ttk.Frame(nb)
-        nb.add(rf, text="📊 结果")
-        self.results_tree = ttk.Treeview(rf, show="headings", height=20)
-        self.results_tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-        ts = ttk.Scrollbar(rf, orient=tk.VERTICAL, command=self.results_tree.yview)
-        ts.pack(side=tk.RIGHT, fill=tk.Y)
-        self.results_tree.configure(yscrollcommand=ts.set)
-        bf = ttk.Frame(rf)
-        bf.pack(fill=tk.X, pady=3)
-        ttk.Button(bf, text="导出 CSV", command=self._export_results).pack(side=tk.LEFT, padx=2)
-        ttk.Button(bf, text="清除", command=self._clear_results).pack(side=tk.LEFT)
-
         # Files
         ff = ttk.Frame(nb)
         nb.add(ff, text="📁 输出文件")
@@ -828,43 +815,6 @@ class PepPatchGUI:
                 self._open_path(path)
 
     # ═══════════════════════════════════════════════════════
-    #  结果
-    # ═══════════════════════════════════════════════════════
-    def _load_csv_to_tree(self, csv_path, max_rows=5000):
-        for item in self.results_tree.get_children():
-            self.results_tree.delete(item)
-        try:
-            with open(csv_path, "r", encoding="utf-8-sig") as f:
-                reader = csv.reader(f)
-                headers = next(reader)
-                self.results_tree["columns"] = headers
-                for h in headers:
-                    self.results_tree.heading(h, text=h)
-                    self.results_tree.column(h, width=max(80, min(120, len(h)*10)), anchor="center")
-                for i, row in enumerate(reader):
-                    if i >= max_rows:
-                        break
-                    self.results_tree.insert("", tk.END, values=row)
-        except Exception as e:
-            self._log(f"Load error: {e}", "error")
-
-    def _export_results(self):
-        p = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
-        if not p:
-            return
-        try:
-            with open(p, "w", newline="", encoding="utf-8-sig") as f:
-                w = csv.writer(f)
-                w.writerow(self.results_tree["columns"])
-                for item in self.results_tree.get_children():
-                    w.writerow(self.results_tree.item(item)["values"])
-        except Exception as e:
-            self._log(f"Export: {e}", "error")
-
-    def _clear_results(self):
-        for item in self.results_tree.get_children():
-            self.results_tree.delete(item)
-
     def run(self):
         self.root.mainloop()
 
