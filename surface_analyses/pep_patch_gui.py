@@ -601,6 +601,7 @@ class PepPatchGUI:
 
     def _run_post(self, job: JobItem, stem: str):
         try:
+            import pandas as pd
             from src.unified_analyzer import analyze
             if job.run_es:
                 pcsv = os.path.join(self.results_dir, f"{stem}_es_patches.csv")
@@ -608,14 +609,44 @@ class PepPatchGUI:
                     result, _ = analyze(pdb_path=job.pdb_path, patches_csv=pcsv,
                                         ply_pos=os.path.join(self.results_dir, f"{stem}_es-pos.ply"),
                                         ply_neg=os.path.join(self.results_dir, f"{stem}_es-neg.ply"), stem=f"{stem}_es")
+                    out_csv = os.path.join(self.results_dir, f"{stem}_es_residues_detailed.csv")
+                    result.to_csv(out_csv, index=False, encoding="utf-8-sig")
+                    self._log(f"  [ES] Saved: {os.path.basename(out_csv)}")
+                    self._save_patch_summary(result, f"{stem}_es", self.results_dir)
                     self._print_top_patches(result, "ES")
             if job.run_hb:
                 npz = os.path.join(self.results_dir, f"{stem}_hb_out.npz")
                 if os.path.exists(npz):
                     result, _ = analyze(pdb_path=job.pdb_path, npz_path=npz, stem=f"{stem}_hb")
+                    out_csv = os.path.join(self.results_dir, f"{stem}_hb_residues_detailed.csv")
+                    result.to_csv(out_csv, index=False, encoding="utf-8-sig")
+                    self._log(f"  [HB] Saved: {os.path.basename(out_csv)}")
+                    self._save_patch_summary(result, f"{stem}_hb", self.results_dir)
                     self._print_top_patches(result, "HB")
         except Exception as e:
             self._log(f"  Post: {e}", "warning")
+
+    def _save_patch_summary(self, df, prefix: str, out_dir: str):
+        """Generate and save patch-level summary CSV."""
+        try:
+            if "patch_total_area_A2" not in df.columns:
+                return
+            patch_summary = (
+                df.groupby(["patch_nr", "patch_type"])
+                .agg(
+                    patch_total_area_A2=("patch_total_area_A2", "first"),
+                    n_residues=("res_id", "nunique"),
+                    top_residue=("res_id", "first"),
+                    top_frac=("frac_of_patch", "first"),
+                )
+                .reset_index()
+                .sort_values(["patch_type", "patch_nr"])
+            )
+            summary_file = os.path.join(out_dir, f"{prefix}_patch_summary.csv")
+            patch_summary.to_csv(summary_file, index=False, encoding="utf-8-sig")
+            self._log(f"  [{prefix.split('_')[0].upper()}] Saved: {os.path.basename(summary_file)}")
+        except Exception:
+            pass
 
     def _print_top_patches(self, df, label: str):
         """Print top-3 patches with type label."""
@@ -753,7 +784,8 @@ class PepPatchGUI:
                 raise
 
         outputs = {"_run.log": log_path}
-        for pat in ["*_patches.csv", "*-pos.ply", "*-neg.ply", "*-potential.ply", "*_out.npz"]:
+        for pat in ["*_patches.csv", "*-pos.ply", "*-neg.ply", "*-potential.ply",
+                     "*_out.npz", "*_residues_detailed.csv", "*_patch_summary.csv"]:
             for f in globmod.glob(os.path.join(self.results_dir, pat)):
                 outputs[os.path.basename(f)] = f
         return outputs
@@ -795,22 +827,28 @@ class PepPatchGUI:
     def _update_files_all(self):
         self.files_list.delete(0, tk.END)
         seen = set()
-        for job in self.jobs:
-            for d in [job.es_outputs, job.hb_outputs]:
-                for name, path in d.items():
-                    if path not in seen and os.path.exists(path):
-                        seen.add(path)
-                        sz = os.path.getsize(path)
-                        ss = f"{sz/1e6:.1f}MB" if sz > 1e6 else f"{sz/1e3:.1f}KB" if sz > 1e3 else f"{sz}B"
-                        self.files_list.insert(tk.END, f"[{job.stem}] {name} ({ss})")
+        # Scan results directory for all known output patterns
+        all_patterns = [
+            "*_run.log", "*_patches.csv", "*-pos.ply", "*-neg.ply", "*-potential.ply",
+            "*_out.npz", "*_residues_detailed.csv", "*_patch_summary.csv"
+        ]
+        for pat in all_patterns:
+            for f in globmod.glob(os.path.join(self.results_dir, pat)):
+                name = os.path.basename(f)
+                if f not in seen and os.path.exists(f):
+                    seen.add(f)
+                    sz = os.path.getsize(f)
+                    ss = f"{sz/1e6:.1f}MB" if sz > 1e6 else f"{sz/1e3:.1f}KB" if sz > 1e3 else f"{sz}B"
+                    # Try to match stem from filename
+                    stem = name.split("_es_")[0].split("_hb_")[0]
+                    self.files_list.insert(tk.END, f"[{stem}] {name} ({ss})")
 
     def _open_file(self, event):
         sel = self.files_list.curselection()
         if sel:
             text = self.files_list.get(sel[0])
             name = text.split("] ", 1)[1].split(" (")[0] if "] " in text else text
-            cwd = str(CFG.project_root) if CFG else os.getcwd()
-            path = os.path.join(cwd, name)
+            path = os.path.join(self.results_dir, name)
             if os.path.exists(path):
                 self._open_path(path)
 

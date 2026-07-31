@@ -33,7 +33,8 @@ for i, pdb_file in enumerate(pdbs):
     hb_prefix = f"{stem}_hb"
     
     out_npz = os.path.join(OUT_DIR, f"{hb_prefix}_out.npz")
-    if os.path.exists(out_npz):
+    res_csv = os.path.join(OUT_DIR, f"{hb_prefix}_residues_detailed.csv")
+    if os.path.exists(out_npz) and os.path.exists(res_csv):
         print(f"[{i+1}/{len(pdbs)}] SKIP {stem} (already done)")
         continue
     
@@ -59,7 +60,7 @@ for i, pdb_file in enumerate(pdbs):
     a.grid_spacing = 0.05; a.rcut = 0.5; a.alpha = 15.0; a.blur_sigma = 0.6
     a.ply_out = None
     a.ply_cmap = None; a.ply_clim = None
-    a.patches = False; a.patch_min = 0.12
+    a.patches = True; a.patch_min = 0.12
     a.verbose = False
     
     log_path = os.path.join(OUT_DIR, f"{hb_prefix}_run.log")
@@ -74,6 +75,33 @@ for i, pdb_file in enumerate(pdbs):
         
         elapsed = time.time() - t0
         print(f"OK ({elapsed:.0f}s)")
+        
+        # Generate residue-level CSV via unified_analyzer
+        try:
+            from src.unified_analyzer import analyze
+            result_df, _ = analyze(npz_path=out_npz, pdb_path=pdb_path)
+            res_csv = os.path.join(OUT_DIR, f"{hb_prefix}_residues_detailed.csv")
+            result_df.to_csv(res_csv, index=False, encoding="utf-8-sig")
+            print(f"  -> {hb_prefix}_residues_detailed.csv")
+            
+            # Also generate patch summary
+            if "patch_total_area_A2" in result_df.columns:
+                patch_summary = (
+                    result_df.groupby(["patch_nr", "patch_type"])
+                    .agg(
+                        patch_total_area_A2=("patch_total_area_A2", "first"),
+                        n_residues=("res_id", "nunique"),
+                        top_residue=("res_id", "first"),
+                        top_frac=("frac_of_patch", "first"),
+                    )
+                    .reset_index()
+                    .sort_values(["patch_type", "patch_nr"])
+                )
+                summary_file = os.path.join(OUT_DIR, f"{hb_prefix}_patch_summary.csv")
+                patch_summary.to_csv(summary_file, index=False, encoding="utf-8-sig")
+                print(f"  -> {hb_prefix}_patch_summary.csv")
+        except Exception as e:
+            print(f"  (unified_analyzer warning: {e})")
     except Exception as e:
         elapsed = time.time() - t0
         print(f"FAIL ({elapsed:.0f}s): {e}")

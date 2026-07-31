@@ -67,6 +67,28 @@ python -m surface_analyses.pep_patch_gui
 - **生成 PLY 可视化文件**：导出网格 PLY。
 - **生成残基级详细 CSV**：由 `src.unified_analyzer` 汇总每个 patch 的残基组成。
 
+#### 输出文件清单
+
+每次运行后，`results/{timestamp}/` 目录下每个 PDB 将生成以下文件：
+
+| 文件 | 来源 | 说明 |
+|------|------|------|
+| `{stem}_es_patches.csv` | 静电分析 | patch 级别汇总（patch 编号、类型、面积、主要残基） |
+| `{stem}_es_residues_detailed.csv` | 后处理 | **静电残基级详细报告**（每个残基在每个 patch 中的面积占比、顶点数等） |
+| `{stem}_es_patch_summary.csv` | 后处理 | 静电 patch 摘要（patch 面积、残基数、top 残基） |
+| `{stem}_es-pos.ply` | 静电分析 | 正电势 patch PLY 网格 |
+| `{stem}_es-neg.ply` | 静电分析 | 负电势 patch PLY 网格 |
+| `{stem}_es-potential.ply` | 静电分析 | 连续电势 PLY 网格 |
+| `{stem}_es_run.log` | 静电分析 | 运行日志（含 integrals 等信息） |
+| `{stem}_hb_out.npz` | 疏水分析 | 疏水表面原始数据（顶点、面片、patch、疏水值等） |
+| `{stem}_hb_residues_detailed.csv` | 后处理 | **疏水残基级详细报告** |
+| `{stem}_hb_patch_summary.csv` | 后处理 | 疏水 patch 摘要 |
+| `{stem}_hb_run.log` | 疏水分析 | 运行日志 |
+| `batch_summary_es.csv` | 批量汇总 | 所有蛋白静电指标横向对比 |
+| `batch_summary_hb.csv` | 批量汇总 | 所有蛋白疏水指标横向对比 |
+
+> 残基级 CSV 由 `src/unified_analyzer.py` 统一生成，列包括：`patch_nr`、`patch_type`、`patch_total_area_A2`、`chain_id`、`res_name`、`res_seq`、`res_id`、`n_vertices`、`area_A2`、`frac_of_patch`、`mean_dist_A`。
+
 ---
 
 ## 3. 平台兼容性（重点）

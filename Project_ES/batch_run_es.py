@@ -38,7 +38,8 @@ for i, pdb_file in enumerate(pdbs):
     es_prefix = f"{stem}_es"
     
     patches_csv = os.path.join(OUT_DIR, f"{es_prefix}_patches.csv")
-    if os.path.exists(patches_csv):
+    res_detailed = os.path.join(OUT_DIR, f"{es_prefix}_residues_detailed.csv")
+    if os.path.exists(patches_csv) and os.path.exists(res_detailed):
         print(f"[{i+1}/{len(pdbs)}] SKIP {stem} (already done)")
         continue
     
@@ -57,7 +58,7 @@ for i, pdb_file in enumerate(pdbs):
     a.patch_cutoff = (2.0, -2.0)
     a.integral_cutoff = (0.3, -0.3)
     a.surface_type = "sas"
-    a.ply_out = None  # skip PLY for speed
+    a.ply_out = os.path.join(OUT_DIR, es_prefix)
     a.pos_patch_cmap = "tab20c"; a.neg_patch_cmap = "tab20c"
     a.ply_cmap = "coolwarm_r"; a.ply_clim = None
     a.check_cdrs = False
@@ -78,6 +79,38 @@ for i, pdb_file in enumerate(pdbs):
         
         elapsed = time.time() - t0
         print(f"OK ({elapsed:.0f}s)")
+        
+        # Generate residue-level CSV + patch summary via unified_analyzer
+        try:
+            from src.unified_analyzer import analyze
+            result_df, _ = analyze(
+                pdb_path=pdb_path,
+                patches_csv=patches_csv,
+                ply_pos=os.path.join(OUT_DIR, f"{es_prefix}-pos.ply"),
+                ply_neg=os.path.join(OUT_DIR, f"{es_prefix}-neg.ply"),
+                stem=es_prefix,
+            )
+            res_csv = os.path.join(OUT_DIR, f"{es_prefix}_residues_detailed.csv")
+            result_df.to_csv(res_csv, index=False, encoding="utf-8-sig")
+            print(f"  -> {es_prefix}_residues_detailed.csv")
+            
+            if "patch_total_area_A2" in result_df.columns:
+                patch_summary = (
+                    result_df.groupby(["patch_nr", "patch_type"])
+                    .agg(
+                        patch_total_area_A2=("patch_total_area_A2", "first"),
+                        n_residues=("res_id", "nunique"),
+                        top_residue=("res_id", "first"),
+                        top_frac=("frac_of_patch", "first"),
+                    )
+                    .reset_index()
+                    .sort_values(["patch_type", "patch_nr"])
+                )
+                summary_file = os.path.join(OUT_DIR, f"{es_prefix}_patch_summary.csv")
+                patch_summary.to_csv(summary_file, index=False, encoding="utf-8-sig")
+                print(f"  -> {es_prefix}_patch_summary.csv")
+        except Exception as e:
+            print(f"  (unified_analyzer warning: {e})")
         
         # Clean APBS temp files to save space
         apbs_dir = os.path.join(_REPO_ROOT, f"Tools/apbs_{stem}")

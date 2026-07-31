@@ -3,7 +3,7 @@
 import argparse
 import csv
 import datetime
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import os
 import pathlib
 import pprint
@@ -296,9 +296,12 @@ def run_electrostatics(
     patch_summ.to_csv(csv_outfile, index=False)
 
     # output residues involved in each patch
-    residue_output = csv.writer(res_outfile)
-    residue_output.writerow(['nr', 'residues'])
-    write_residues(patches, residue_output)
+    if resout is not None:
+        write_residues_detailed_csv(patches, surf.vertices, surf.faces, resout)
+    else:
+        residue_output = csv.writer(res_outfile)
+        residue_output.writerow(['nr', 'residues'])
+        write_residues(patches, residue_output)
 
     # Compute the total solvent-accessible potential.
     within_range, closest_atom, distance = grid.distance_to_spheres(centers=traj.xyz[0], rmax=1., radii=radii)
@@ -440,7 +443,100 @@ def write_residues(df, out, cols=['positive','negative']):
                 ix, ' '.join(sorted(patch['residue'].unique(), key=lambda x: int(x[3:])))
             ])
             ix += 1
-            
+
+
+def write_residues_detailed_csv(patches_df, vertices, faces, out_path, cols=['positive', 'negative']):
+    """Write a detailed residue-level CSV with per-residue area contributions.
+
+    Columns:
+        patch_nr, patch_type, patch_total_area_A2, chain_id, res_name,
+        res_seq, res_id, seq_nr, seq_res_id, n_vertices, area_A2,
+        frac_of_patch, mean_dist_A
+    """
+    import csv as csv_mod
+
+    # Compute per-vertex area (in nm²) from faces
+    ab = vertices[faces[:, 1]] - vertices[faces[:, 0]]
+    ac = vertices[faces[:, 2]] - vertices[faces[:, 0]]
+    tri_areas = np.sqrt(np.sum(np.cross(ab, ac) ** 2, axis=1)) / 2
+    vert_areas_nm2 = np.zeros(len(vertices), dtype=np.float64)
+    np.add.at(vert_areas_nm2, faces.ravel(), np.repeat(tri_areas, 3))
+    vert_areas_nm2 /= 3
+
+    # Parse residue string like "GLY123" into (res_name, res_seq) and chain-prefixed variant
+    import re
+    def parse_residue(rstr):
+        m = re.match(r'^([A-Za-z]?)([A-Za-z]{3})(\d+\w?)$', rstr)
+        if m:
+            return m.group(1) or '', m.group(2), m.group(3)
+        return '', rstr, ''
+
+    rows = []
+    patch_nr = 0
+    for column in cols:
+        ptype = 'positive' if column == 'positive' else 'negative'
+        groups = dict(list(patches_df[patches_df[column] != -1].groupby(column)))
+        for patch_id, grp in sorted(groups.items(), key=lambda kv: -kv[1]['area'].sum()):
+            patch_nr += 1
+            patch_verts_idx = grp.index.values
+            patch_areas_nm2 = vert_areas_nm2[patch_verts_idx]
+            total_area_nm2 = patch_areas_nm2.sum()
+            total_area_A2 = total_area_nm2 * 100.0
+
+            # Centroid and mean distance
+            centroid = vertices[patch_verts_idx].mean(axis=0)
+            dists_nm = np.linalg.norm(vertices[patch_verts_idx] - centroid, axis=1)
+            mean_dist_A = np.mean(dists_nm) * 10.0
+
+            # Per-residue breakdown
+            res_areas_nm2 = defaultdict(float)
+            res_verts_count = defaultdict(int)
+            for idx, v_idx in enumerate(patch_verts_idx):
+                rstr = grp.loc[v_idx, 'residue'] if 'residue' in grp.columns else str(grp.loc[v_idx].get('residue', ''))
+                # residue column may contain prefixed chain letter like "AGLY123" or "GLY123"
+                chain_id, res_name, res_seq = parse_residue(rstr)
+                if not chain_id:
+                    chain_id = 'A'  # default chain
+                key = (chain_id, res_seq)
+                res_areas_nm2[key] += patch_areas_nm2[idx]
+                res_verts_count[key] += 1
+
+            for (chain_id, res_seq), area_nm2 in sorted(res_areas_nm2.items()):
+                area_A2 = area_nm2 * 100.0
+                frac = area_nm2 / total_area_nm2 if total_area_nm2 > 0 else 0
+                # Try to get res_name from the first vertex
+                res_name = ''
+                for idx, v_idx in enumerate(patch_verts_idx):
+                    rstr = grp.loc[v_idx, 'residue'] if 'residue' in grp.columns else ''
+                    cid, rn, rs = parse_residue(rstr)
+                    if (cid or 'A') == chain_id and rs == res_seq:
+                        res_name = rn
+                        break
+
+                res_id = f"{res_name}{res_seq}"
+                rows.append({
+                    "patch_nr": patch_nr,
+                    "patch_type": ptype,
+                    "patch_total_area_A2": round(total_area_A2, 2),
+                    "chain_id": chain_id,
+                    "res_name": res_name,
+                    "res_seq": res_seq,
+                    "res_id": res_id,
+                    "seq_nr": 0,
+                    "seq_res_id": res_id,
+                    "n_vertices": res_verts_count[(chain_id, res_seq)],
+                    "area_A2": round(area_A2, 3),
+                    "frac_of_patch": round(frac, 4),
+                    "mean_dist_A": round(mean_dist_A, 2),
+                })
+
+    result_df = pd.DataFrame(rows)
+    if not result_df.empty:
+        result_df.to_csv(out_path, index=False, encoding="utf-8-sig")
+        print(f"Residue-level detailed CSV saved: {out_path}")
+    return result_df
+
+
 def biggest_residue_contribution(df):
     """Find the element in df['residue'] with the highest total contribution in df['area']."""
     return (
